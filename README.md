@@ -1,3 +1,7 @@
+# Message Verifier
+
+This repository is a demonstration of EIP-712, which defines a standard for hashing and signing of typed structured data in Ethereum. This demo showcases how to implement EIP-712 in a web application.
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -20,17 +24,17 @@ You can start editing the page by modifying `app/page.js`. The page auto-updates
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+The `.env` file should contain the following environment variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXT_PUBLIC_NETWORK_ID`: The network ID of the Ethereum network you are using.
+- `NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS`: The address of the deployed Messager contract.
+- `NEXT_PUBLIC_INFURA_API`: Your Infura API key for connecting to the Ethereum network.
+- `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID`: Your Wallet Connect project ID. You can get it from the Wallet Connect dashboard.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Features
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- **Sign Message**: Users can sign a message with their Ethereum account.
+- **Verify Message**: Users can verify a signed message by relaying it through the Messager smart contract.
+- **Transaction Relay**: Users can relay the signed message on-chain.

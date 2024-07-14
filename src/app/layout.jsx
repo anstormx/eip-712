@@ -4,6 +4,7 @@ import "./globals.css";
 import { ToastContainer, Flip } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navbar from "@/components/navbar";
+import Footer from "@/components/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
           <div className="flex flex-col min-h-screen text-white bg-[#28282B]">
             <Navbar />
             {children}
+            <Footer />
             <ToastContainer
               position="bottom-right"
               autoClose={3000}

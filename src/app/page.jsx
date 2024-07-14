@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { ethers, Signature } from 'ethers';
 import Messager from '../../artifacts/contracts/Messager.sol/Messager.json';
 import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useIsMounted } from '@/hooks/useIsMounted';
 import { toast } from 'react-toastify';
 
