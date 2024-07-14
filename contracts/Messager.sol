@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.24;
+
+import "hardhat/console.sol";
 
 contract Messager {
     string public textMessage = "Hello World!";
     address public messageSender = msg.sender;
-    address public recAddress;
-    address public senderAddress;
 
     struct EIP712Domain {
         string name;
@@ -60,7 +60,7 @@ contract Messager {
     }
 
     // Verify that a message was signed by the owner of the given address
-    function verifyMessage(MessageStruct memory messageStruct, address sender, uint8 v, bytes32 r, bytes32 s) public returns (bool) {
+    function verifyMessage(MessageStruct memory messageStruct, address sender, uint8 v, bytes32 r, bytes32 s) public view returns (bool) {
         // concatenate EIP712Domain separator and Message struct hash to create the digest
         bytes32 hash = keccak256(abi.encodePacked(
             "\x19\x01",
@@ -71,8 +71,8 @@ contract Messager {
         // Recover the signer's address
         address recoveredAddress = ecrecover(hash, v, r, s);
 
-        recAddress = recoveredAddress;
-        senderAddress = sender;
+        console.log("Recovered address: %s", recoveredAddress);
+        console.log("Sender address: %s", sender);
 
         // Return true if the recovered address matches the sender
         return recoveredAddress == sender;

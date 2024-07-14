@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ethers, getAddress } from 'ethers';
-import abi from '../utils/abi.json';
+import abi from '../../artifacts/contracts/Messager.sol/Messager.json';
 require('dotenv').config();
 
 const NEXT_PUBLIC_PRIVATE_KEY = process.env.NEXT_PUBLIC_PRIVATE_KEY;
@@ -27,6 +27,7 @@ export default function Home() {
     "sepolia",
     NEXT_PUBLIC_INFURA_API,
   );
+  
   const messagerContract = new ethers.Contract(NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS, abi, providerInfura);
 
   //add metamask reload callback
