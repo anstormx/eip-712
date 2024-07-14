@@ -15,14 +15,15 @@ contract Messager is EIP712 {
         uint256 deadline;
     }
 
-    bytes32 immutable private MESSAGE_TYPEHASH = keccak256("MessageStruct(string text,uint256 deadline)");
+    bytes32 private constant MESSAGE_TYPEHASH = keccak256("MessageStruct(string text,uint256 deadline)");
 
     event MessageChanged(string text, address sender);
 
-    constructor () EIP712("Messager", "1") {}
+    constructor() EIP712("Messager", "1") {
+        console.log("Chain ID: %s", block.chainid);
+    }
 
-    // Hash the Message struct
-    function hashMessage(MessageStruct memory messageStruct) internal view returns (bytes32) {
+    function hashMessage(MessageStruct memory messageStruct) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             MESSAGE_TYPEHASH,
             keccak256(bytes(messageStruct.text)),
@@ -30,31 +31,23 @@ contract Messager is EIP712 {
         ));
     }
 
-    // Verify that a message was signed by the owner of the given address
-    function verifyMessage(MessageStruct calldata messageStruct, address sender, bytes memory signature) public view returns (bool) {
-        // Hash the message
+    function verifyMessage(MessageStruct calldata messageStruct, address sender, uint8 v, bytes32 r, bytes32 s) public view returns (bool) {
         bytes32 digest = _hashTypedDataV4(hashMessage(messageStruct));
+        address recoveredSigner = ECDSA.recover(digest, v, r, s);
 
-        // Recover the signer's address
-        address recoveredAddress = ECDSA.recover(digest, signature);
-
-        console.log("Recovered address: %s", recoveredAddress);
+        console.log("Recovered address: %s", recoveredSigner);
         console.log("Sender address: %s", sender);
 
-        // Return true if the recovered address matches the sender
-        return recoveredAddress == sender;
+        return recoveredSigner == sender;
     }
 
-    function message(MessageStruct calldata messageStruct, address sender, bytes memory signature) public {
-        // verify the signature and that the deadline has not passed
-        require(verifyMessage(messageStruct, sender, signature), "SIGNATURE DOES NOT MATCH");
+    function message(MessageStruct calldata messageStruct, address sender, uint8 v, bytes32 r, bytes32 s) public {
+        require(verifyMessage(messageStruct, sender, v, r, s), "INVALID SIGNATURE");
         require(block.timestamp <= messageStruct.deadline, "DEADLINE HAS BEEN REACHED");
 
-        // update the message and sender
         textMessage = messageStruct.text;
-        messageSender = sender;
+        messageSender = msg.sender;
 
-        // emit an event
         emit MessageChanged(textMessage, messageSender);
     }
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ethers, getAddress } from 'ethers';
-import abi from '../../artifacts/contracts/Messager.sol/Messager.json';
+import { ethers, getAddress, N, Signature } from 'ethers';
+import Messager from '../../artifacts/contracts/Messager.sol/Messager.json';
 require('dotenv').config();
 
 const NEXT_PUBLIC_PRIVATE_KEY = process.env.NEXT_PUBLIC_PRIVATE_KEY;
@@ -10,6 +10,7 @@ const NEXT_PUBLIC_NETWORK_ID = Number(process.env.NEXT_PUBLIC_NETWORK_ID);
 const NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS;
 const NEXT_PUBLIC_BACKEND_WALLET_ADDRESS = process.env.NEXT_PUBLIC_BACKEND_WALLET_ADDRESS;
 const NEXT_PUBLIC_INFURA_API = process.env.NEXT_PUBLIC_INFURA_API;
+
 
 export default function Home() {
   const [accountAddress, setAccountAddress] = useState('');
@@ -27,24 +28,20 @@ export default function Home() {
     "sepolia",
     NEXT_PUBLIC_INFURA_API,
   );
-  
-  const messagerContract = new ethers.Contract(NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS, abi, providerInfura);
+
+  const messagerContract = new ethers.Contract(NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS, Messager.abi, providerInfura);
 
   //add metamask reload callback
   const connectWallet = async () => {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     console.log(accounts);
-    setAccountAddress(accounts);
+    setAccountAddress(getAddress(accounts[0]));
     setWeb3Message('You are connected to the wallet!');
     setContractState(`textMessage: ${await messagerContract.textMessage()} | messageSender: ${await messagerContract.messageSender() }`);
   };
 
   async function signMessage () {
     try {
-      // const providerMetamask = new ethers.BrowserProvider(window.ethereum);
-
-      const signer = getAddress(accountAddress[0]);
-
       const EIP712Domain = [
         { name: 'name', type: 'string' },
         { name: 'version', type: 'string' },
@@ -81,11 +78,11 @@ export default function Home() {
 
       const rawSignature = await window.ethereum.request({
         method: 'eth_signTypedData_v4',
-        params: [signer, msgParams],
-        from: signer,
+        params: [accountAddress, msgParams],
       });
 
-      setSignature("Signature: " + rawSignature);
+      console.log('Signature:', rawSignature);
+      setSignature(rawSignature);
 
       let recoveredAddress = ethers.verifyTypedData(domainData, {MessageStruct}, messageData, rawSignature);
       console.log('Recovered:', recoveredAddress);
@@ -101,55 +98,60 @@ export default function Home() {
   }
 
   async function relayMessage () {
-    const signature = signatureRelay.substring(2);
-    const r = "0x" + signature.substring(0, 64);
-    const s = "0x" + signature.substring(64, 128);
-    const v = parseInt(signature.substring(128, 130), 16);
-    console.log({v,r,s})
+    const sig = Signature.from(signatureRelay);
 
-    const nonce = await providerInfura.getTransactionCount(NEXT_PUBLIC_BACKEND_WALLET_ADDRESS);
-    console.log(nonce);
+    const wallet = new ethers.Wallet(NEXT_PUBLIC_PRIVATE_KEY, providerInfura);
+    const walletAddress = await wallet.getAddress();
+
+    const nonce = await providerInfura.getTransactionCount(walletAddress);
+    console.log("Nonce", nonce);
 
     const functionData = messagerContract.interface.encodeFunctionData("message", [
       [messageTextRelay, Number(messageDeadlineRelay)],
-      getAddress(messageSenderRelay),
-      v,  
-      r,
-      s
+      messageSenderRelay,
+      sig.v,
+      sig.r,
+      sig.s
     ]); 
 
+    const gasPrice = await providerInfura.getFeeData();
+    console.log("Gas Price", gasPrice);
+
+    let estimatedGas = await providerInfura.estimateGas({
+      from: walletAddress,
+      to: NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS,
+      data: functionData,
+    });
+    console.log("Estimated Gas", estimatedGas);
+
     const transaction = {
-      'from': getAddress(NEXT_PUBLIC_BACKEND_WALLET_ADDRESS),
-      'to': getAddress(NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS),
+      'from': walletAddress,
+      'to': NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS,
       'value': 0,
       'nonce': nonce,
-      'gasLimit': 300000,
       'data': functionData,
-      'chainId': NEXT_PUBLIC_NETWORK_ID
+      'chainId': NEXT_PUBLIC_NETWORK_ID,
+      'gasLimit': estimatedGas,
+      'maxFeePerGas': gasPrice.maxFeePerGas,
+      'maxPriorityFeePerGas': gasPrice.maxPriorityFeePerGas,
     };
 
-    console.log(transaction);
-
-    const wallet = new ethers.Wallet(NEXT_PUBLIC_PRIVATE_KEY, providerInfura);
+    console.log("Transaction", transaction);
+    
     const signedTx = await wallet.signTransaction(transaction);
     console.log("signedTx", signedTx);
 
-    const providerMetamask = new ethers.BrowserProvider(window.ethereum);
-    const estimatedGas = await providerMetamask.estimateGas(transaction);
-    transaction.gasLimit = estimatedGas.mul(2);
-
-    console.log(estimatedGas);
-
-    return;
-
-    // try {
-    //     const tx = await providerInfura.broadcastTransaction(signedTx);
-    //     await tx.wait();
-    //     console.log("🎉 The hash of your transaction is: ", tx.hash, "\n");
-    //     alert("Message sent!");
-    // } catch (error) {
-    //     console.log("❗Something went wrong while submitting your transaction:", error);
-    // }
+    try {
+      console.log("Sending transaction...");
+      const tx = await wallet.sendTransaction(transaction);
+      console.log("🎉 The hash of your transaction is: ", tx.hash, "\n");
+      const receipt = await tx.wait();
+      console.log("🎉 The transaction was mined in block: ", receipt.blockNumber, "\n");
+      alert("Message sent!");
+    } catch (error) {
+      console.log("❗Something went wrong while submitting your transaction:", error);
+      alert("Error sending message!");
+    }
   }
 
   return (
@@ -201,7 +203,7 @@ export default function Home() {
           onChange={(e) => setMessageDeadlineRelay(e.target.value)}
           className="input text-black"
         />
-        <span>Message Setter</span>
+        <span>Message Sender</span>
         <input
           type="text"
           value={messageSenderRelay}
