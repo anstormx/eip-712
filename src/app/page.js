@@ -42,11 +42,13 @@ export default function Home() {
     try {
       // const providerMetamask = new ethers.BrowserProvider(window.ethereum);
 
+      const signer = getAddress(accountAddress[0]);
+
       const EIP712Domain = [
         { name: 'name', type: 'string' },
         { name: 'version', type: 'string' },
         { name: 'chainId', type: 'uint256' },
-        { name: 'verifyingContract', type: 'address' }
+        { name: 'verifyingContract', type: 'address' },
       ];
 
       const domainData = {
@@ -56,7 +58,7 @@ export default function Home() {
         verifyingContract: NEXT_PUBLIC_MESSAGER_CONTRACT_ADDRESS,
       };
 
-      const Message = [
+      const MessageStruct = [
         { name: 'text', type: 'string' },
         { name: 'deadline', type: 'uint256' }
       ]
@@ -69,29 +71,23 @@ export default function Home() {
       const msgParams = JSON.stringify({
         domain: domainData,
         types: {
-          Message: Message,
+          MessageStruct: MessageStruct,
           EIP712Domain: EIP712Domain,
         },
-        primaryType: 'Message',
+        primaryType: 'MessageStruct',
         message: messageData,
       });
 
       const rawSignature = await window.ethereum.request({
         method: 'eth_signTypedData_v4',
-        params: [accountAddress[0], msgParams],
-        from: accountAddress[0],
+        params: [signer, msgParams],
+        from: signer,
       });
 
       setSignature("Signature: " + rawSignature);
 
-      let recoveredAddress = ethers.verifyTypedData(domainData, {Message}, messageData, rawSignature);
-      recoveredAddress = recoveredAddress.toLowerCase();
+      let recoveredAddress = ethers.verifyTypedData(domainData, {MessageStruct}, messageData, rawSignature);
       console.log('Recovered:', recoveredAddress);
-      console.log('Account:', accountAddress[0]);
-
-      if (recoveredAddress !== accountAddress[0]) {
-        throw new Error('Signature verification failed');
-      } 
 
       setMessageSenderRelay(recoveredAddress);
       setSignatureRelay(rawSignature);
@@ -104,9 +100,10 @@ export default function Home() {
   }
 
   async function relayMessage () {
-    const r = signatureRelay.slice(0, 66);
-    const s = "0x" + signatureRelay.slice(66, 130);
-    const v = parseInt(signatureRelay.slice(130, 132), 16);
+    const signature = signatureRelay.substring(2);
+    const r = "0x" + signature.substring(0, 64);
+    const s = "0x" + signature.substring(64, 128);
+    const v = parseInt(signature.substring(128, 130), 16);
     console.log({v,r,s})
 
     const nonce = await providerInfura.getTransactionCount(NEXT_PUBLIC_BACKEND_WALLET_ADDRESS);

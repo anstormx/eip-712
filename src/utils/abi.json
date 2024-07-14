@@ -38,8 +38,8 @@
 						"type": "uint256"
 					}
 				],
-				"internalType": "struct Messager.Message",
-				"name": "textmessage",
+				"internalType": "struct Messager.MessageStruct",
+				"name": "messageStruct",
 				"type": "tuple"
 			},
 			{
@@ -83,6 +83,32 @@
 	},
 	{
 		"inputs": [],
+		"name": "recAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "senderAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "textMessage",
 		"outputs": [
 			{
@@ -109,8 +135,8 @@
 						"type": "uint256"
 					}
 				],
-				"internalType": "struct Messager.Message",
-				"name": "textmessage",
+				"internalType": "struct Messager.MessageStruct",
+				"name": "messageStruct",
 				"type": "tuple"
 			},
 			{
@@ -134,7 +160,7 @@
 				"type": "bytes32"
 			}
 		],
-		"name": "verify",
+		"name": "verifyMessage",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -142,7 +168,7 @@
 				"type": "bool"
 			}
 		],
-		"stateMutability": "view",
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]

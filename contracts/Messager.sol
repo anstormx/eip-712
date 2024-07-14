@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 contract Messager {
     string public textMessage = "Hello World!";
     address public messageSender = msg.sender;
+    address public recAddress;
+    address public senderAddress;
 
-    // EIP-712 domain parameters
     struct EIP712Domain {
         string name;
         string version;
@@ -14,21 +15,19 @@ contract Messager {
         address verifyingContract;
     }
 
-    struct Message {
+    struct MessageStruct {
         string text;
         uint256 deadline;
     }
 
-    // EIP-712 domain separator
-    bytes32 immutable DOMAIN_SEPARATOR;
-
-    bytes32 immutable MESSAGE_TYPEHASH;
-    bytes32 immutable DOMAIN_TYPEHASH;
+    bytes32 immutable private DOMAIN_SEPARATOR;
+    bytes32 immutable private MESSAGE_TYPEHASH;
+    bytes32 immutable private DOMAIN_TYPEHASH;
 
     event MessageChanged(string text, address sender);
 
     constructor () {
-        MESSAGE_TYPEHASH = keccak256("Message(string text,uint256 deadline)");
+        MESSAGE_TYPEHASH = keccak256("MessageStruct(string text,uint256 deadline)");
         
         DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
   
@@ -39,7 +38,8 @@ contract Messager {
             verifyingContract: address(this)
         }));
     }
-
+    
+    // Hash the EIP712 Domain struct
     function hashDomain(EIP712Domain memory domain) internal view returns (bytes32) {
         return keccak256(abi.encode(
             DOMAIN_TYPEHASH,
@@ -50,36 +50,44 @@ contract Messager {
         ));
     }
 
-    function hashText(Message memory textmessage) internal view returns (bytes32) {
+    // Hash the Message struct
+    function hashMessage(MessageStruct memory messageStruct) internal view returns (bytes32) {
         return keccak256(abi.encode(
             MESSAGE_TYPEHASH,
-            keccak256(bytes(textmessage.text)),
-            textmessage.deadline
+            keccak256(bytes(messageStruct.text)),
+            messageStruct.deadline
         ));
     }
 
     // Verify that a message was signed by the owner of the given address
-    function verify(Message memory textmessage, address sender, uint8 v, bytes32 r, bytes32 s) public view returns (bool) {
+    function verifyMessage(MessageStruct memory messageStruct, address sender, uint8 v, bytes32 r, bytes32 s) public returns (bool) {
         // concatenate EIP712Domain separator and Message struct hash to create the digest
         bytes32 hash = keccak256(abi.encodePacked(
             "\x19\x01",
             DOMAIN_SEPARATOR,
-            hashText(textmessage)
+            hashMessage(messageStruct)
         ));
 
         // Recover the signer's address
         address recoveredAddress = ecrecover(hash, v, r, s);
 
-        // use ecrecover to extract the address from the signature and compare it to the provided address
+        recAddress = recoveredAddress;
+        senderAddress = sender;
+
+        // Return true if the recovered address matches the sender
         return recoveredAddress == sender;
     }
 
-    function message(Message memory textmessage, address sender, uint8 v, bytes32 r, bytes32 s) public {
+    function message(MessageStruct memory messageStruct, address sender, uint8 v, bytes32 r, bytes32 s) public {
         // verify the signature and that the deadline has not passed
-        require(verify(textmessage, sender, v, r, s), "SIGNATURE DOES NOT MATCH");
-        require(block.timestamp <= textmessage.deadline, "DEADLINE HAS BEEN REACHED");
-        textMessage = textmessage.text;
+        require(verifyMessage(messageStruct, sender, v, r, s), "SIGNATURE DOES NOT MATCH");
+        require(block.timestamp <= messageStruct.deadline, "DEADLINE HAS BEEN REACHED");
+
+        // update the message and sender
+        textMessage = messageStruct.text;
         messageSender = sender;
+
+        // emit an event
         emit MessageChanged(textMessage, messageSender);
     }
 }
